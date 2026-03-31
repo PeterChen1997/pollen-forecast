@@ -1,5 +1,5 @@
 app = "pollen-forecast"
-primary_region = "hkg"
+primary_region = "sin"
 
 [build]
   dockerfile = "Dockerfile"
