@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import './App.css';
 import CityDetailModal from './components/CityDetailModal';
 import PollenMap from './components/Map';
@@ -26,6 +26,35 @@ interface ScrapeStatus {
   scrapingCities: string[];
 }
 
+interface MyCityInfo {
+  city: { en: string; cn: string; lat: number; lng: number };
+  distance: number;
+  inList: boolean;
+  data: CityData | null;
+}
+
+interface UserLocation {
+  lat: number;
+  lng: number;
+}
+
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const earthRadiusKm = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(distance: number | null): string {
+  if (distance === null) return '已收录';
+  if (distance < 1) return '距您 <1km';
+  if (distance < 10) return `距您 ${distance.toFixed(1)}km`;
+  return `距您 ${Math.round(distance)}km`;
+}
+
 function App() {
   const [cities, setCities] = useState<CityMeta[]>([]);
   const [data, setData] = useState<CityData[]>([]);
@@ -33,6 +62,12 @@ function App() {
   const [selectedCity, setSelectedCity] = useState<{ id: string; name: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>({ isScraping: false, scrapingCities: [] });
+  const [myCity, setMyCity] = useState<MyCityInfo | null>(null);
+  const [myCityLoading, setMyCityLoading] = useState(
+    () => typeof navigator !== 'undefined' && 'geolocation' in navigator
+  );
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const wasScrapingRef = useRef(false);
   const currentYear = new Date().getFullYear();
 
   // Fetch cities list + pollen data
@@ -53,6 +88,29 @@ function App() {
       });
   }, []);
 
+  // Get user geolocation and fetch their city's pollen data
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+        fetch(`/api/my-city?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`)
+          .then(r => r.json())
+          .then((info: MyCityInfo) => {
+            setMyCity(info);
+            setMyCityLoading(false);
+          })
+          .catch(() => setMyCityLoading(false));
+      },
+      () => setMyCityLoading(false),
+      { enableHighAccuracy: false, timeout: 10000 }
+    );
+  }, []);
+
   // Poll scrape status while scraping
   useEffect(() => {
     const poll = () => {
@@ -60,8 +118,10 @@ function App() {
         .then(r => r.json())
         .then((status: ScrapeStatus) => {
           setScrapeStatus(status);
-          // Refresh pollen data if scraping just finished
-          if (!status.isScraping) {
+          const justFinished = wasScrapingRef.current && !status.isScraping;
+          wasScrapingRef.current = status.isScraping;
+
+          if (justFinished) {
             fetch('/api/pollen').then(r => r.json()).then(setData).catch(() => {});
           }
         })
@@ -79,6 +139,48 @@ function App() {
 
   // Build data map for quick lookup
   const dataMap = new Map(data.map(d => [d.city_en, d]));
+  const cityMetaMap = new Map(cities.map(city => [city.en, city]));
+  const effectiveMyCity = myCity
+    ? {
+        ...myCity,
+        data: dataMap.get(myCity.city.en) ?? myCity.data,
+      }
+    : null;
+  const listedData = data.filter(item => cityMetaMap.has(item.city_en));
+  const coveredCityCount = cities.filter(city => dataMap.has(city.en)).length;
+  const isMyCityScraping = effectiveMyCity ? scrapeStatus.scrapingCities.includes(effectiveMyCity.city.en) : false;
+
+  const getDistanceToCity = (cityEn: string): number | null => {
+    if (!userLocation) return null;
+    const city = cityMetaMap.get(cityEn) ?? (effectiveMyCity?.city.en === cityEn ? effectiveMyCity.city : undefined);
+    if (!city) return null;
+
+    return haversineDistance(userLocation.lat, userLocation.lng, city.lat, city.lng);
+  };
+
+  const sortedCityData = userLocation
+    ? [...listedData].sort((left, right) => {
+        const leftDistance = getDistanceToCity(left.city_en);
+        const rightDistance = getDistanceToCity(right.city_en);
+
+        if (leftDistance === null && rightDistance === null) {
+          return right.levelCode - left.levelCode;
+        }
+        if (leftDistance === null) return 1;
+        if (rightDistance === null) return -1;
+        if (leftDistance !== rightDistance) return leftDistance - rightDistance;
+        return right.levelCode - left.levelCode;
+      })
+    : listedData;
+
+  const pendingCities = cities.filter(city => !dataMap.has(city.en) && scrapeStatus.scrapingCities.includes(city.en));
+  const sortedPendingCities = userLocation
+    ? [...pendingCities].sort((left, right) => {
+        const leftDistance = haversineDistance(userLocation.lat, userLocation.lng, left.lat, left.lng);
+        const rightDistance = haversineDistance(userLocation.lat, userLocation.lng, right.lat, right.lng);
+        return leftDistance - rightDistance;
+      })
+    : pendingCities;
 
   // Stats
   const highCount = data.filter(d => d.levelCode >= 4).length;
@@ -89,20 +191,86 @@ function App() {
     <div className="app">
       {/* Navbar */}
       <nav className="navbar">
-        <div className="navbar-brand">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22c4-4 8-7.5 8-12a8 8 0 1 0-16 0c0 4.5 4 8 8 12z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-          花粉雷达
-        </div>
-        <div className="navbar-status">
-          <span className={`status-dot ${scrapeStatus.isScraping ? 'scraping' : ''}`}></span>
-          {scrapeStatus.isScraping
-            ? `正在更新数据 (${scrapeStatus.scrapingCities.length} 城市抓取中)`
-            : `${data.length} 个城市已更新`}
+        <a className="navbar-brand" href="/" aria-label="花粉雷达首页">
+          <img className="navbar-logo" src="/favicon.svg" alt="" />
+          <div className="navbar-copy">
+            <span className="navbar-title">花粉雷达</span>
+            <span className="navbar-subtitle">Peter Chen 的开源城市花粉地图</span>
+          </div>
+        </a>
+        <div className="navbar-actions">
+          <a
+            className="navbar-link"
+            href="https://blog.peterchen97.cn/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            博客
+          </a>
+          <a
+            className="navbar-link"
+            href="https://github.com/PeterChen1997/pollen-forecast"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+          <div className="navbar-status">
+            <span className={`status-dot ${scrapeStatus.isScraping ? 'scraping' : ''}`}></span>
+            {scrapeStatus.isScraping
+              ? `正在更新数据 (${scrapeStatus.scrapingCities.length} 城市抓取中)`
+              : `${coveredCityCount} 个收录城市已更新`}
+          </div>
         </div>
       </nav>
+
+      {/* My City Banner */}
+      {!myCityLoading && effectiveMyCity && (
+        <div
+          className={`city-banner ${effectiveMyCity.data ? 'clickable' : ''}`}
+          style={effectiveMyCity.data ? { borderLeftColor: effectiveMyCity.data.color } : undefined}
+          onClick={() => effectiveMyCity.data && handleCityClick(effectiveMyCity.city.en, effectiveMyCity.city.cn)}
+        >
+          <div className="banner-left">
+            <svg className="banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <div className="banner-info">
+              <div className="banner-eyebrow">当前城市</div>
+              <div className="banner-city-row">
+                <div className="banner-city-name">
+                  {effectiveMyCity.city.cn}
+                </div>
+                <div className="banner-tags">
+                  {!effectiveMyCity.inList && <span className="banner-tag">实时抓取</span>}
+                  {effectiveMyCity.distance > 30 && (
+                    <span className="banner-distance">距您约 {effectiveMyCity.distance}km</span>
+                  )}
+                </div>
+              </div>
+              <div className="banner-msg">
+                {effectiveMyCity.data
+                  ? effectiveMyCity.data.msg || '暂无花粉提示'
+                  : isMyCityScraping
+                    ? '正在实时抓取当前城市花粉数据...'
+                    : effectiveMyCity.inList
+                      ? '当前城市数据准备中...'
+                      : '正在尝试补抓当前城市花粉数据...'}
+              </div>
+            </div>
+          </div>
+          {effectiveMyCity.data ? (
+            <div className="banner-level" style={{ backgroundColor: effectiveMyCity.data.color || '#94a3b8' }}>
+              {effectiveMyCity.data.level}
+            </div>
+          ) : (
+            <div className="banner-level" style={{ backgroundColor: isMyCityScraping ? '#f59e0b' : '#94a3b8' }}>
+              {isMyCityScraping ? '抓取中' : '加载中'}
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <div className="error-banner">{error}</div>}
 
@@ -143,21 +311,26 @@ function App() {
 
         <div className="city-sidebar">
           <div className="sidebar-header">
-            <span className="sidebar-title">城市排行</span>
+            <div>
+              <div className="sidebar-title">{userLocation ? '附近城市' : '城市列表'}</div>
+              <div className="sidebar-subtitle">
+                {userLocation ? '按距离由近到远展示' : '未开启定位时展示默认顺序'}
+              </div>
+            </div>
             <span className="sidebar-count">
-              {data.length}/{cities.length}
+              {coveredCityCount}/{cities.length}
             </span>
           </div>
           <div className="city-list">
-            {/* Show ranked cities with data */}
-            {data.map((item, index) => (
+            {/* Show cities with data */}
+            {sortedCityData.map((item) => (
               <div
                 key={item.city_en}
                 className={`city-item ${selectedCity?.id === item.city_en ? 'active' : ''}`}
                 onClick={() => handleCityClick(item.city_en, item.city)}
               >
-                <span className={`city-rank ${index === 0 ? 'top1' : index === 1 ? 'top2' : index === 2 ? 'top3' : 'normal'}`}>
-                  {index + 1}
+                <span className={`city-distance ${userLocation ? 'nearby' : 'listed'}`}>
+                  {formatDistance(getDistanceToCity(item.city_en))}
                 </span>
                 <div className="city-info">
                   <div className="city-name">{item.city}</div>
@@ -170,11 +343,11 @@ function App() {
             ))}
 
             {/* Show loading skeletons for cities not yet scraped */}
-            {cities
-              .filter(c => !dataMap.has(c.en) && scrapeStatus.scrapingCities.includes(c.en))
-              .map(c => (
+            {sortedPendingCities.map(c => (
                 <div key={c.en} className="city-item" style={{ opacity: 0.6 }}>
-                  <span className="city-rank normal" style={{ background: '#e2e8f0' }}>-</span>
+                  <span className="city-distance pending">
+                    {userLocation ? formatDistance(getDistanceToCity(c.en)) : '抓取中'}
+                  </span>
                   <div className="city-info">
                     <div className="city-name">{c.cn}</div>
                     <div className="city-msg pulse" style={{ color: '#eab308' }}>数据抓取中...</div>
@@ -207,26 +380,28 @@ function App() {
 
       <footer className="footer">
         <div className="footer-inner">
-          <div className="footer-title">花粉雷达 &copy; {currentYear} 项目作者与贡献者</div>
+          <div className="footer-title">Peter Chen &copy; {currentYear} 花粉雷达</div>
+          <div className="footer-note">
+            花粉雷达是 Peter Chen 维护的开源项目，默认优先展示用户所在城市花粉情况，并把中国城市花粉数据做成更直观的地图与趋势视图。
+          </div>
+          <div className="footer-links">
+            <a href="https://blog.peterchen97.cn/" target="_blank" rel="noopener noreferrer">
+              blog.peterchen97.cn
+            </a>
+            <a href="https://github.com/PeterChen1997/pollen-forecast" target="_blank" rel="noopener noreferrer">
+              github.com/PeterChen1997/pollen-forecast
+            </a>
+          </div>
           <div className="footer-note">
             花粉数据来源：第三方花粉接口
             {' '}
             <span className="footer-source">graph.weatherdt.com</span>
             ；地图底图来源：
             {' '}
-            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
-              OpenStreetMap
+            <a href="https://ditu.amap.com/" target="_blank" rel="noopener noreferrer">
+              高德地图
             </a>
-            {' '}
-            与
-            {' '}
-            <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">
-              CARTO
-            </a>
-            。
-          </div>
-          <div className="footer-note">
-            本项目对原始数据做抓取、缓存与可视化，不拥有原始数据版权；页面内容仅供健康防护参考，不构成医疗建议或官方预报。
+            。本项目对原始数据做抓取、缓存与可视化，不拥有原始数据版权；页面内容仅供健康防护参考，不构成医疗建议或官方预报。
           </div>
         </div>
       </footer>

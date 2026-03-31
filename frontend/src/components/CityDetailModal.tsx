@@ -106,11 +106,11 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
-        lineStyle: { color: '#22c55e', width: 2 },
+        lineStyle: { color: '#7e14ff', width: 2 },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(34,197,94,0.3)' },
-            { offset: 1, color: 'rgba(34,197,94,0.02)' },
+            { offset: 0, color: 'rgba(126,20,255,0.26)' },
+            { offset: 1, color: 'rgba(126,20,255,0.03)' },
           ]),
         },
       }],

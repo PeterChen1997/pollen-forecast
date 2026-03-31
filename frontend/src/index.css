@@ -1,18 +1,20 @@
 :root {
-  --primary: #22c55e;
-  --primary-dark: #16a34a;
-  --primary-light: #bbf7d0;
-  --bg: #f8faf9;
+  --primary: #863bff;
+  --primary-dark: #7e14ff;
+  --primary-light: #ede6ff;
+  --accent-cyan: #47bfff;
+  --bg: #f6f1ff;
   --card-bg: #ffffff;
-  --text: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --border: #e2e8f0;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --text: #2d1f46;
+  --text-secondary: #6c5d8c;
+  --text-muted: #9f8fbe;
+  --border: #eadfff;
+  --shadow-sm: 0 4px 14px rgba(80, 35, 170, 0.06);
+  --shadow-md: 0 16px 32px rgba(88, 34, 189, 0.12);
+  --shadow-lg: 0 28px 60px rgba(71, 26, 149, 0.16);
   --radius: 12px;
   --radius-sm: 8px;
+  --nav-height: 78px;
 
   /* Pollen level colors */
   --level-none: #94a3b8;
@@ -38,6 +40,10 @@
 
 body {
   margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(134, 59, 255, 0.12), transparent 30%),
+    radial-gradient(circle at top right, rgba(71, 191, 255, 0.1), transparent 24%),
+    linear-gradient(180deg, #fbf8ff 0%, var(--bg) 52%, #f8f4ff 100%);
 }
 
 #root {

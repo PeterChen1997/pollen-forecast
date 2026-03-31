@@ -62,6 +62,7 @@ const app = new Elysia()
       if (cityName) {
         const matched = findCityByChineseName(cityName);
         if (matched) {
+          const isListedCity = majorCities.some(city => city.en === matched.en);
           // Scrape this city on demand
           await scrapeSingleCity(matched.en, matched.cn);
           const rows = await sql`
@@ -71,7 +72,7 @@ const app = new Elysia()
           return {
             city: { en: matched.en, cn: matched.cn, lat: matched.lat, lng: matched.lng },
             distance: 0,
-            inList: false,
+            inList: isListedCity,
             data: rows[0] || null,
           };
         }
