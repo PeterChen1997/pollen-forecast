@@ -1,0 +1,19 @@
+{
+  "name": "/app",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.4.1",
+    "better-sqlite3": "^12.8.0",
+    "elysia": "^1.4.28",
+    "sqlite": "^5.1.1"
+  }
+}
