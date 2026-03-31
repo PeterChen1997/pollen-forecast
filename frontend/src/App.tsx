@@ -384,14 +384,6 @@ function App() {
           <div className="footer-note">
             花粉雷达是 Peter Chen 维护的开源项目，默认优先展示用户所在城市花粉情况，并把中国城市花粉数据做成更直观的地图与趋势视图。
           </div>
-          <div className="footer-links">
-            <a href="https://blog.peterchen97.cn/" target="_blank" rel="noopener noreferrer">
-              blog.peterchen97.cn
-            </a>
-            <a href="https://github.com/PeterChen1997/pollen-forecast" target="_blank" rel="noopener noreferrer">
-              github.com/PeterChen1997/pollen-forecast
-            </a>
-          </div>
           <div className="footer-note">
             花粉数据来源：第三方花粉接口
             {' '}
