@@ -4,15 +4,16 @@ import { staticPlugin } from '@elysiajs/static';
 import db from "./db";
 import { runScrape } from "./scraper";
 import path from "path";
+import fs from "fs";
 
 const port = process.env.PORT || 3001;
+const host = "0.0.0.0"; // bind to all interfaces for docker
+
+// Get static directory relative to this script
+const staticDir = path.join(__dirname, '../../frontend/dist');
 
 const app = new Elysia()
   .use(cors())
-  .use(staticPlugin({
-    assets: path.join(__dirname, '../../frontend/dist'),
-    prefix: '/'
-  }))
   .get("/api/pollen", async () => {
     // Run scrape asynchronously (non-blocking) on visit
     runScrape().catch(console.error);
@@ -40,10 +41,20 @@ const app = new Elysia()
 
     return data;
   })
-  .get("*", ({ set }) => {
-    set.redirect = '/index.html';
+  .get("/assets/*", ({ request }) => {
+    // Manually serve assets if staticPlugin isn't catching it
+    const url = new URL(request.url);
+    const assetPath = path.join(staticDir, url.pathname);
+    return Bun.file(assetPath);
   })
-  .listen(port);
+  .get("/*", ({ set, request }) => {
+      const url = new URL(request.url);
+      if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/assets/')) return;
+
+      set.headers['Content-Type'] = 'text/html; charset=utf8';
+      return fs.readFileSync(path.join(staticDir, 'index.html'), 'utf8');
+  })
+  .listen({ port, hostname: host });
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
