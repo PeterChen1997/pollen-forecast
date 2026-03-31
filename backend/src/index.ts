@@ -1,11 +1,16 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { staticPlugin } from '@elysiajs/static';
 import db from "./db";
 import { runScrape } from "./scraper";
+import path from "path";
 
 const app = new Elysia()
   .use(cors())
-  .get("/", () => "Hello Elysia")
+  .use(staticPlugin({
+    assets: path.join(__dirname, '../../frontend/dist'),
+    prefix: '/'
+  }))
   .get("/api/pollen", async () => {
     // Run scrape asynchronously (non-blocking) on visit
     runScrape().catch(console.error);
@@ -32,6 +37,9 @@ const app = new Elysia()
     `).all({ $city: city as any });
 
     return data;
+  })
+  .get("/", ({ set }) => {
+    set.redirect = '/index.html';
   })
   .listen(3001);
 

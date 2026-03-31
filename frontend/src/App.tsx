@@ -20,7 +20,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/pollen')
+    fetch('/api/pollen')
       .then(res => res.json())
       .then(data => {
         setData(data);

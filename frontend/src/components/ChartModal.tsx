@@ -16,7 +16,7 @@ export default function ChartModal({ cityId, cityName, onClose }: ChartModalProp
 
     const fetchData = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/pollen/${cityId}`);
+        const response = await fetch(`/api/pollen/${cityId}`);
         const data: any[] = await response.json();
 
         if (chartRef.current && data && Array.isArray(data)) {

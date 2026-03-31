@@ -1,7 +1,8 @@
 import { Database } from "bun:sqlite";
 
 // Initialize SQLite database
-const db = new Database('pollen.sqlite', { create: true });
+// Use a data directory so Docker volumes can persist it
+const db = new Database('./data/pollen.sqlite', { create: true });
 
 // Create tables
 db.exec(`
