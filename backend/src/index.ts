@@ -2,7 +2,7 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 
 import sql, { initDB } from "./db";
-import { runScrape, getScrapingStatus, majorCities } from "./scraper";
+import { runScrape, getScrapingStatus, majorCities, findNearestMajorCity, findCityByChineseName, scrapeSingleCity } from "./scraper";
 import path from "path";
 
 const port = process.env.PORT ?? 8080;
@@ -24,6 +24,73 @@ const app = new Elysia()
       lat: c.lat,
       lng: c.lng,
     }));
+  })
+  // Locate user's city by coordinates
+  .get("/api/my-city", async ({ query }) => {
+    const lat = parseFloat(query.lat as string);
+    const lng = parseFloat(query.lng as string);
+    if (isNaN(lat) || isNaN(lng)) {
+      return { error: "Invalid coordinates" };
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const { city: nearest, distance } = findNearestMajorCity(lat, lng);
+
+    // If user is close to a known city, return it directly
+    if (distance < 150) {
+      const rows = await sql`
+        SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg
+        FROM pollen_data WHERE city_en = ${nearest.en} AND date = ${today} LIMIT 1
+      `;
+      return {
+        city: { en: nearest.en, cn: nearest.cn, lat: nearest.lat, lng: nearest.lng },
+        distance: Math.round(distance),
+        inList: true,
+        data: rows[0] || null,
+      };
+    }
+
+    // Not close to any major city — try reverse geocoding
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh&zoom=10`,
+        { headers: { "User-Agent": "PollenRadar/1.0" } }
+      );
+      const geo: any = await geoRes.json();
+      const cityName = geo.address?.city || geo.address?.town || geo.address?.county || '';
+
+      if (cityName) {
+        const matched = findCityByChineseName(cityName);
+        if (matched) {
+          // Scrape this city on demand
+          await scrapeSingleCity(matched.en, matched.cn);
+          const rows = await sql`
+            SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg
+            FROM pollen_data WHERE city_en = ${matched.en} AND date = ${today} LIMIT 1
+          `;
+          return {
+            city: { en: matched.en, cn: matched.cn, lat: matched.lat, lng: matched.lng },
+            distance: 0,
+            inList: false,
+            data: rows[0] || null,
+          };
+        }
+      }
+    } catch (e) {
+      console.error("Reverse geocode failed:", e);
+    }
+
+    // Fallback: return nearest major city
+    const rows = await sql`
+      SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg
+      FROM pollen_data WHERE city_en = ${nearest.en} AND date = ${today} LIMIT 1
+    `;
+    return {
+      city: { en: nearest.en, cn: nearest.cn, lat: nearest.lat, lng: nearest.lng },
+      distance: Math.round(distance),
+      inList: true,
+      data: rows[0] || null,
+    };
   })
   // Get scrape status
   .get("/api/scrape-status", () => {

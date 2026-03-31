@@ -58,6 +58,107 @@ export const majorCities: CityDef[] = [
   { en: "lasa", cn: "拉萨", id: 101140101, tier: 2, lat: 29.6500, lng: 91.1000 },
 ];
 
+// Expanded cities for reverse-geocoding lookup (cities NOT in majorCities)
+// Maps Chinese city name (without 市 suffix) to weatherdt-compatible pinyin
+export const expandedCityMap: Record<string, { en: string; cn: string; lat: number; lng: number }> = {
+  "徐州": { en: "xuzhou", cn: "徐州", lat: 34.2044, lng: 117.2859 },
+  "常州": { en: "changzhou", cn: "常州", lat: 31.8106, lng: 119.9741 },
+  "烟台": { en: "yantai", cn: "烟台", lat: 37.4638, lng: 121.4480 },
+  "潍坊": { en: "weifang", cn: "潍坊", lat: 36.7069, lng: 119.1619 },
+  "临沂": { en: "linyi", cn: "临沂", lat: 35.1046, lng: 118.3565 },
+  "淄博": { en: "zibo", cn: "淄博", lat: 36.8131, lng: 118.0548 },
+  "绍兴": { en: "shaoxing", cn: "绍兴", lat: 30.0025, lng: 120.5803 },
+  "台州": { en: "taizhou", cn: "台州", lat: 28.6614, lng: 121.4201 },
+  "嘉兴": { en: "jiaxing", cn: "嘉兴", lat: 30.7522, lng: 120.7518 },
+  "金华": { en: "jinhua", cn: "金华", lat: 29.0785, lng: 119.6478 },
+  "泉州": { en: "quanzhou", cn: "泉州", lat: 24.8741, lng: 118.6758 },
+  "中山": { en: "zhongshan", cn: "中山", lat: 22.5154, lng: 113.3926 },
+  "惠州": { en: "huizhou", cn: "惠州", lat: 23.1116, lng: 114.4165 },
+  "南通": { en: "nantong", cn: "南通", lat: 31.9800, lng: 120.8942 },
+  "保定": { en: "baoding", cn: "保定", lat: 38.8739, lng: 115.4646 },
+  "唐山": { en: "tangshan", cn: "唐山", lat: 39.6292, lng: 118.1802 },
+  "廊坊": { en: "langfang", cn: "廊坊", lat: 39.5186, lng: 116.6831 },
+  "洛阳": { en: "luoyang", cn: "洛阳", lat: 34.6198, lng: 112.4540 },
+  "襄阳": { en: "xiangyang", cn: "襄阳", lat: 32.0420, lng: 112.1443 },
+  "宜昌": { en: "yichang", cn: "宜昌", lat: 30.6918, lng: 111.2866 },
+  "岳阳": { en: "yueyang", cn: "岳阳", lat: 29.3572, lng: 113.1289 },
+  "株洲": { en: "zhuzhou", cn: "株洲", lat: 27.8274, lng: 113.1340 },
+  "芜湖": { en: "wuhu", cn: "芜湖", lat: 31.3529, lng: 118.4331 },
+  "绵阳": { en: "mianyang", cn: "绵阳", lat: 31.4680, lng: 104.6796 },
+  "南充": { en: "nanchong", cn: "南充", lat: 30.8373, lng: 106.1107 },
+  "遵义": { en: "zunyi", cn: "遵义", lat: 27.7254, lng: 106.9272 },
+  "湛江": { en: "zhanjiang", cn: "湛江", lat: 21.2707, lng: 110.3594 },
+  "汕头": { en: "shantou", cn: "汕头", lat: 23.3535, lng: 116.6814 },
+  "柳州": { en: "liuzhou", cn: "柳州", lat: 24.3260, lng: 109.4280 },
+  "吉林": { en: "jilinshi", cn: "吉林", lat: 43.8519, lng: 126.5601 },
+  "大庆": { en: "daqing", cn: "大庆", lat: 46.5883, lng: 125.1037 },
+  "鞍山": { en: "anshan", cn: "鞍山", lat: 41.1087, lng: 122.9956 },
+  "包头": { en: "baotou", cn: "包头", lat: 40.6571, lng: 109.8400 },
+  "赣州": { en: "ganzhou", cn: "赣州", lat: 25.8310, lng: 114.9332 },
+  "桂林": { en: "guilin", cn: "桂林", lat: 25.2736, lng: 110.2905 },
+  "三亚": { en: "sanya", cn: "三亚", lat: 18.2528, lng: 109.5120 },
+  "威海": { en: "weihai", cn: "威海", lat: 37.5091, lng: 122.1163 },
+  "扬州": { en: "yangzhou", cn: "扬州", lat: 32.3942, lng: 119.4133 },
+  "盐城": { en: "yancheng", cn: "盐城", lat: 33.3477, lng: 120.1634 },
+  "镇江": { en: "zhenjiang", cn: "镇江", lat: 32.1871, lng: 119.4244 },
+  "泰安": { en: "taian", cn: "泰安", lat: 36.1880, lng: 117.0875 },
+  "邯郸": { en: "handan", cn: "邯郸", lat: 36.6256, lng: 114.5391 },
+  "九江": { en: "jiujiang", cn: "九江", lat: 29.7051, lng: 116.0014 },
+  "宜春": { en: "yichun", cn: "宜春", lat: 27.8043, lng: 114.4163 },
+  "咸阳": { en: "xianyang", cn: "咸阳", lat: 34.3293, lng: 108.7089 },
+  "宝鸡": { en: "baoji", cn: "宝鸡", lat: 34.3612, lng: 107.2370 },
+  "衡阳": { en: "hengyang", cn: "衡阳", lat: 26.8936, lng: 112.5719 },
+  "常德": { en: "changde", cn: "常德", lat: 29.0318, lng: 111.6988 },
+  "许昌": { en: "xuchang", cn: "许昌", lat: 34.0357, lng: 113.8526 },
+  "漯河": { en: "luohe", cn: "漯河", lat: 33.5816, lng: 114.0167 },
+};
+
+// Build a lookup from Chinese name to majorCities entry
+const majorCityByCn = new Map(majorCities.map(c => [c.cn, c]));
+
+export function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function findNearestMajorCity(lat: number, lng: number): { city: CityDef; distance: number } {
+  let nearest = majorCities[0];
+  let minDist = haversineDistance(lat, lng, nearest.lat, nearest.lng);
+  for (const city of majorCities) {
+    const dist = haversineDistance(lat, lng, city.lat, city.lng);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = city;
+    }
+  }
+  return { city: nearest, distance: minDist };
+}
+
+export function findCityByChineseName(name: string): { en: string; cn: string; lat: number; lng: number } | null {
+  // Strip common suffixes
+  const cleaned = name.replace(/[市区县]$/, '');
+  // Check majorCities first
+  const major = majorCityByCn.get(cleaned) || majorCityByCn.get(name);
+  if (major) return { en: major.en, cn: major.cn, lat: major.lat, lng: major.lng };
+  // Check expanded cities
+  return expandedCityMap[cleaned] || expandedCityMap[name] || null;
+}
+
+export async function scrapeSingleCity(cityEn: string, cityCn: string): Promise<void> {
+  const today = new Date();
+  const endDate = today.toISOString().split('T')[0];
+  const past = new Date(today);
+  past.setDate(past.getDate() - 7);
+  const startDate = past.toISOString().split('T')[0];
+  const city: CityDef = { en: cityEn, cn: cityCn, id: 0, tier: 2, lat: 0, lng: 0 };
+  await fetchPollenData(city, startDate, endDate);
+}
+
 // Track which cities are currently being scraped
 const scrapingCities = new Set<string>();
 let isScraping = false;
