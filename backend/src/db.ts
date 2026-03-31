@@ -1,27 +1,41 @@
-import { Database } from "bun:sqlite";
+import postgres from 'postgres';
 
-// Initialize SQLite database
-// Use a data directory so Docker volumes can persist it
-const db = new Database('./data/pollen.sqlite', { create: true });
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
 
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS pollen_data (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    city_en TEXT NOT NULL,
-    city_cn TEXT NOT NULL,
-    date TEXT NOT NULL,
-    level_code INTEGER NOT NULL,
-    level_name TEXT NOT NULL,
-    color TEXT,
-    msg TEXT,
-    UNIQUE(city_en, date)
-  );
+const sql = postgres(DATABASE_URL, {
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
+});
 
-  CREATE TABLE IF NOT EXISTS scrape_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    last_scraped_at TEXT NOT NULL
-  );
-`);
+// Initialize tables
+export async function initDB() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS pollen_data (
+      id SERIAL PRIMARY KEY,
+      city_en TEXT NOT NULL,
+      city_cn TEXT NOT NULL,
+      date TEXT NOT NULL,
+      level_code INTEGER NOT NULL,
+      level_name TEXT NOT NULL,
+      color TEXT,
+      msg TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(city_en, date)
+    )
+  `;
 
-export default db;
+  await sql`
+    CREATE TABLE IF NOT EXISTS scrape_log (
+      id SERIAL PRIMARY KEY,
+      last_scraped_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+
+  console.log('Database tables initialized.');
+}
+
+export default sql;

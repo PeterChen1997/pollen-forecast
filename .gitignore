@@ -1,2 +1,4 @@
 node_modules/
 pollen.sqlite
+.env
+data/

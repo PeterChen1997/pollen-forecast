@@ -1,63 +1,74 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
-import { staticPlugin } from '@elysiajs/static';
-import db from "./db";
-import { runScrape } from "./scraper";
+
+import sql, { initDB } from "./db";
+import { runScrape, getScrapingStatus, majorCities } from "./scraper";
 import path from "path";
-import fs from "fs";
 
-const port = parseInt(process.env.PORT || "8080");
-const host = "0.0.0.0"; // bind to all interfaces for docker
-
-// Get static directory relative to this script
+const port = process.env.PORT ?? 8080;
 const staticDir = path.join(__dirname, '../../frontend/dist');
+
+// Initialize DB before starting server
+await initDB();
+// Start initial scrape after DB is ready
+runScrape().catch(console.error);
 
 const app = new Elysia()
   .use(cors())
+  // Get all cities metadata (static list + coordinates)
+  .get("/api/cities", () => {
+    return majorCities.map(c => ({
+      en: c.en,
+      cn: c.cn,
+      tier: c.tier,
+      lat: c.lat,
+      lng: c.lng,
+    }));
+  })
+  // Get scrape status
+  .get("/api/scrape-status", () => {
+    return getScrapingStatus();
+  })
+  // Get today's pollen data
   .get("/api/pollen", async () => {
-    // Run scrape asynchronously (non-blocking) on visit
     runScrape().catch(console.error);
 
     const today = new Date().toISOString().split('T')[0];
-    const data = db.query(`
-      SELECT city_cn as city, city_en, date, level_code as levelCode, level_name as level, color, msg
+    const data = await sql`
+      SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg
       FROM pollen_data
-      WHERE date = $date
-      ORDER BY levelCode DESC
-    `).all({ $date: today as any });
-
+      WHERE date = ${today}
+      ORDER BY level_code DESC
+    `;
     return data;
   })
+  // Get historical pollen data for a city
   .get("/api/pollen/:city", async ({ params: { city } }) => {
-    // Run scrape asynchronously (non-blocking) on visit
     runScrape().catch(console.error);
 
-    const data = db.query(`
-      SELECT date, level_code as levelCode, level_name as level, color, msg
+    const data = await sql`
+      SELECT date, level_code as "levelCode", level_name as level, color, msg
       FROM pollen_data
-      WHERE city_en = $city
+      WHERE city_en = ${city}
       ORDER BY date ASC
-    `).all({ $city: city as any });
-
+    `;
     return data;
   })
-  .use(staticPlugin({
-    assets: staticDir,
-    prefix: '/'
-  }))
-  .get("/", ({ set }) => {
-      set.headers['Content-Type'] = 'text/html';
-      return fs.readFileSync(path.join(staticDir, 'index.html'), 'utf8');
-  })
-  .get("/*", ({ set, request }) => {
-      const url = new URL(request.url);
-      if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/assets/')) return;
+  .get("/", () => Bun.file(path.join(staticDir, 'index.html')))
+  .get("/*", ({ request }) => {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/')) return;
 
-      set.headers['Content-Type'] = 'text/html; charset=utf8';
-      return fs.readFileSync(path.join(staticDir, 'index.html'), 'utf8');
+    const filePath = path.join(staticDir, url.pathname);
+    const file = Bun.file(filePath);
+
+    return file.exists().then(exists => {
+      if (exists) return file;
+      return Bun.file(path.join(staticDir, 'index.html'));
+    });
   })
-  .listen({ port, hostname: host });
+  .listen(port);
 
 console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
+  `🌿 花粉雷达 server running at ${app.server?.hostname}:${app.server?.port}`
 );

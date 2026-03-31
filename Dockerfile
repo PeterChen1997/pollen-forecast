@@ -19,10 +19,5 @@ RUN bun install --production --frozen-lockfile
 COPY --from=builder /app/backend/ ./backend/
 COPY --from=builder /app/frontend/dist/ ./frontend/dist/
 
-# Create a volume point so dokploy doesn't lose sqlite data across deploys
-# The db is generated relative to where we run, so if it's running in /app
-# the sqlite db will be /app/pollen.sqlite
-VOLUME ["/app/data"]
-# update db path to /app/data/pollen.sqlite if we want persistence
-EXPOSE 3001
+EXPOSE 8080
 CMD ["bun", "run", "backend/src/index.ts"]

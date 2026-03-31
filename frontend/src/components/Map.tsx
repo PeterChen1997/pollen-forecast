@@ -1,90 +1,137 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { divIcon } from 'leaflet';
 
-// Coordinates mapping (approximate)
-const cityCoords: Record<string, [number, number]> = {
-  "beijing": [39.9042, 116.4074],
-  "shanghai": [31.2304, 121.4737],
-  "guangzhou": [23.1291, 113.2644],
-  "shenzhen": [22.5431, 114.0579],
-  "chengdu": [30.5728, 104.0665],
-  "hangzhou": [30.2741, 120.1551],
-  "wuhan": [30.5928, 114.3055],
-  "xian": [34.3416, 108.9398],
-  "chongqing": [29.5332, 106.5050],
-  "qingdao": [36.0671, 120.3826],
-  "nanjing": [32.0603, 118.7969],
-  "changsha": [28.2282, 112.9388],
-  "xiamen": [24.4798, 118.0894],
-  "kunming": [25.0406, 102.7123],
-  "zhengzhou": [34.7466, 113.6253],
-  "haerbin": [45.8038, 126.5350],
-  "shenyang": [41.8057, 123.4315],
-  "taiyuan": [37.8706, 112.5489],
-  "hefei": [31.8206, 117.2272],
-  "fuzhou": [26.0745, 119.2965],
-  "jinan": [36.6512, 117.1201],
-  "haikou": [20.0174, 110.3492],
-  "guiyang": [26.6470, 106.6302],
-  "lanzhou": [36.0611, 103.8343],
-  "xining": [36.6171, 101.7782],
-  "yinchuan": [38.4872, 106.2309],
-  "wulumuqi": [43.8256, 87.6168],
-  "huhehaote": [40.8423, 111.7492],
-  "nanning": [22.8170, 108.3665],
-  "tianjin": [39.0842, 117.2009]
-};
+interface CityMeta {
+  en: string;
+  cn: string;
+  tier: number;
+  lat: number;
+  lng: number;
+}
+
+interface CityData {
+  city: string;
+  city_en: string;
+  levelCode: number;
+  level: string;
+  color: string;
+  msg: string;
+}
 
 interface MapProps {
-  data: any[];
+  cities: CityMeta[];
+  data: CityData[];
+  scrapingCities: string[];
   onCityClick: (cityId: string, cityName: string) => void;
 }
 
-export default function Map({ data, onCityClick }: MapProps) {
-  return (
-    <MapContainer center={[35.8617, 104.1954]} zoom={4} style={{ height: '100%', width: '100%', borderRadius: '8px' }}>
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-      {data.map((city) => {
-        const coords = cityCoords[city.city_en];
-        if (!coords) return null;
+function getLevelColor(levelCode: number): string {
+  if (levelCode >= 5) return '#991b1b';
+  if (levelCode === 4) return '#ef4444';
+  if (levelCode === 3) return '#f97316';
+  if (levelCode === 2) return '#eab308';
+  if (levelCode === 1) return '#22c55e';
+  return '#94a3b8';
+}
 
-        const createCustomIcon = (color: string) => {
-            return divIcon({
-                className: 'custom-div-icon',
-                html: `<div style="background-color: ${color || '#999'}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.4);"></div>`,
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
-            });
-        };
+export default function PollenMap({ cities, data, scrapingCities, onCityClick }: MapProps) {
+  const dataMap = new Map(data.map(d => [d.city_en, d]));
+
+  return (
+    <MapContainer
+      center={[34.5, 108]}
+      zoom={5}
+      style={{ height: '100%', width: '100%' }}
+      zoomControl={true}
+    >
+      <TileLayer
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+      />
+      {cities.map((city) => {
+        const cityData = dataMap.get(city.en);
+        const isScraping = scrapingCities.includes(city.en);
+        const color = cityData ? (cityData.color || getLevelColor(cityData.levelCode)) : (isScraping ? '#eab308' : '#d1d5db');
+        const radius = cityData ? (city.tier === 1 ? 10 : 7) : 5;
+        const opacity = cityData ? 0.9 : 0.4;
 
         return (
-          <Marker
-              key={city.city_en}
-              position={coords}
-              icon={createCustomIcon(city.color)}
-              eventHandlers={{
-                  click: () => onCityClick(city.city_en, city.city)
-              }}
+          <CircleMarker
+            key={city.en}
+            center={[city.lat, city.lng]}
+            radius={radius}
+            fillColor={color}
+            fillOpacity={opacity}
+            color="white"
+            weight={2}
+            eventHandlers={{
+              click: () => onCityClick(city.en, city.cn),
+            }}
           >
+            <Tooltip direction="top" offset={[0, -8]} permanent={false}>
+              <div style={{ textAlign: 'center', padding: '2px 4px' }}>
+                <strong>{city.cn}</strong>
+                {cityData ? (
+                  <>
+                    <br />
+                    <span style={{ color: cityData.color }}>
+                      {cityData.level}
+                    </span>
+                  </>
+                ) : isScraping ? (
+                  <>
+                    <br />
+                    <span style={{ color: '#eab308', fontSize: 12 }}>更新中...</span>
+                  </>
+                ) : null}
+              </div>
+            </Tooltip>
             <Popup>
-              <div>
-                <strong>{city.city}</strong><br />
-                级别: {city.level}<br />
-                <span style={{color: city.color}}>●</span> {city.msg}
-                <br />
+              <div style={{ minWidth: 160 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{city.cn}</div>
+                {cityData ? (
+                  <>
+                    <div style={{ marginBottom: 4 }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: cityData.color || '#999',
+                        color: 'white',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}>
+                        {cityData.level}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
+                      {cityData.msg}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 13, color: '#999', marginBottom: 8 }}>
+                    {isScraping ? '数据抓取中...' : '暂无数据'}
+                  </div>
+                )}
                 <button
-                  onClick={() => onCityClick(city.city_en, city.city)}
-                  style={{marginTop: '5px', cursor: 'pointer', border: '1px solid #ccc', background: '#f0f0f0', borderRadius: '4px', padding: '2px 8px'}}
+                  onClick={() => onCityClick(city.en, city.cn)}
+                  style={{
+                    width: '100%',
+                    padding: '6px 0',
+                    background: '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
                 >
-                  查看历史曲线
+                  查看详情
                 </button>
               </div>
             </Popup>
-          </Marker>
+          </CircleMarker>
         );
       })}
     </MapContainer>
