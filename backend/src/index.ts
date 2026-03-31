@@ -5,6 +5,8 @@ import db from "./db";
 import { runScrape } from "./scraper";
 import path from "path";
 
+const port = process.env.PORT || 3001;
+
 const app = new Elysia()
   .use(cors())
   .use(staticPlugin({
@@ -38,10 +40,10 @@ const app = new Elysia()
 
     return data;
   })
-  .get("/", ({ set }) => {
+  .get("*", ({ set }) => {
     set.redirect = '/index.html';
   })
-  .listen(3001);
+  .listen(port);
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
