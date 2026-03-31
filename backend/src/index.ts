@@ -6,7 +6,7 @@ import { runScrape } from "./scraper";
 import path from "path";
 import fs from "fs";
 
-const port = process.env.PORT || 3001;
+const port = parseInt(process.env.PORT || "8080");
 const host = "0.0.0.0"; // bind to all interfaces for docker
 
 // Get static directory relative to this script
@@ -41,11 +41,13 @@ const app = new Elysia()
 
     return data;
   })
-  .get("/assets/*", ({ request }) => {
-    // Manually serve assets if staticPlugin isn't catching it
-    const url = new URL(request.url);
-    const assetPath = path.join(staticDir, url.pathname);
-    return Bun.file(assetPath);
+  .use(staticPlugin({
+    assets: staticDir,
+    prefix: '/'
+  }))
+  .get("/", ({ set }) => {
+      set.headers['Content-Type'] = 'text/html';
+      return fs.readFileSync(path.join(staticDir, 'index.html'), 'utf8');
   })
   .get("/*", ({ set, request }) => {
       const url = new URL(request.url);
