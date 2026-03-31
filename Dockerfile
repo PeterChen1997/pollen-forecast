@@ -24,5 +24,5 @@ COPY --from=builder /app/frontend/dist/ ./frontend/dist/
 # the sqlite db will be /app/pollen.sqlite
 VOLUME ["/app/data"]
 # update db path to /app/data/pollen.sqlite if we want persistence
-EXPOSE 8080
+EXPOSE 3001
 CMD ["bun", "run", "backend/src/index.ts"]
