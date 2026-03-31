@@ -26,6 +26,10 @@ interface CityDetailModalProps {
   onClose: () => void;
 }
 
+interface TooltipParamLike {
+  dataIndex: number;
+}
+
 const levelDescriptions: Record<number, string> = {
   0: '花粉浓度极低，适合户外活动',
   1: '花粉浓度较低，一般不会引发过敏',
@@ -68,9 +72,13 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
       grid: { top: 20, right: 20, bottom: 30, left: 40 },
       tooltip: {
         trigger: 'axis',
-        formatter: (params: any) => {
-          const p = params[0];
-          const item = history[p.dataIndex];
+        formatter: (params: TooltipParamLike | TooltipParamLike[]) => {
+          const firstParam = Array.isArray(params) ? params[0] : params;
+          if (!firstParam) return '';
+
+          const item = history[firstParam.dataIndex];
+          if (!item) return '';
+
           return `<strong>${item.date}</strong><br/>
                   等级: <span style="color:${item.color}">${item.level}</span> (${item.levelCode})<br/>
                   ${item.msg}`;

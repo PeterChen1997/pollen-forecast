@@ -1,8 +1,16 @@
 {
-  "name": "/app",
+  "name": "pollen-forecast",
+  "description": "Pollen forecast map for major cities in China.",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev:backend": "bun run backend/src/index.ts",
+    "dev:frontend": "bun run --cwd frontend dev",
+    "build": "bun run --cwd frontend build",
+    "start": "bun run backend/src/index.ts",
+    "lint:frontend": "bun run --cwd frontend lint"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "axios": "^1.14.0"

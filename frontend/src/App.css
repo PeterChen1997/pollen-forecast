@@ -386,10 +386,52 @@
 
 /* ===== Footer ===== */
 .footer {
-  padding: 16px 24px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
+  padding: 18px 24px 22px;
   border-top: 1px solid var(--border);
-  background: var(--card-bg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 249, 0.98) 100%);
+}
+
+.footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.footer-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.footer-note {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.footer-source {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.footer a {
+  color: var(--primary-dark);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .footer {
+    padding: 18px 16px 24px;
+  }
+
+  .footer-inner {
+    gap: 8px;
+  }
 }

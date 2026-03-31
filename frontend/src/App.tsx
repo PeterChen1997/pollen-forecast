@@ -33,6 +33,7 @@ function App() {
   const [selectedCity, setSelectedCity] = useState<{ id: string; name: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>({ isScraping: false, scrapingCities: [] });
+  const currentYear = new Date().getFullYear();
 
   // Fetch cities list + pollen data
   useEffect(() => {
@@ -205,7 +206,29 @@ function App() {
       )}
 
       <footer className="footer">
-        花粉雷达 &copy; {new Date().getFullYear()} &middot; 数据仅供参考，外出请做好防护
+        <div className="footer-inner">
+          <div className="footer-title">花粉雷达 &copy; {currentYear} 项目作者与贡献者</div>
+          <div className="footer-note">
+            花粉数据来源：第三方花粉接口
+            {' '}
+            <span className="footer-source">graph.weatherdt.com</span>
+            ；地图底图来源：
+            {' '}
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+              OpenStreetMap
+            </a>
+            {' '}
+            与
+            {' '}
+            <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">
+              CARTO
+            </a>
+            。
+          </div>
+          <div className="footer-note">
+            本项目对原始数据做抓取、缓存与可视化，不拥有原始数据版权；页面内容仅供健康防护参考，不构成医疗建议或官方预报。
+          </div>
+        </div>
       </footer>
     </div>
   );
