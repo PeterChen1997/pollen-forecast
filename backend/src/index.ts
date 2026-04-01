@@ -122,6 +122,57 @@ const app = new Elysia()
     `;
     return data;
   })
+  // Submit a pollen rating
+  .post("/api/rating", async ({ body, request }) => {
+    const { city_en, score, fingerprint } = body as { city_en: string; score: number; fingerprint: string };
+    if (!city_en || !score || !fingerprint) {
+      return { error: "Missing required fields" };
+    }
+    if (score < 1 || score > 5 || !Number.isInteger(score)) {
+      return { error: "Score must be integer 1-5" };
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    await sql`
+      INSERT INTO pollen_ratings (city_en, date, score, fingerprint)
+      VALUES (${city_en}, ${today}, ${score}, ${fingerprint})
+      ON CONFLICT (city_en, date, fingerprint) DO UPDATE SET
+        score = EXCLUDED.score,
+        created_at = NOW()
+    `;
+
+    // Return updated summary
+    const summary = await sql`
+      SELECT
+        COUNT(*)::int as count,
+        ROUND(AVG(score), 1)::float as avg,
+        json_agg(score) as scores
+      FROM pollen_ratings
+      WHERE city_en = ${city_en} AND date = ${today}
+    `;
+    return summary[0] || { count: 0, avg: 0, scores: [] };
+  })
+  // Get rating summary for a city today
+  .get("/api/ratings/:city", async ({ params: { city } }) => {
+    const today = new Date().toISOString().split('T')[0];
+    const summary = await sql`
+      SELECT
+        COUNT(*)::int as count,
+        ROUND(AVG(score), 1)::float as avg,
+        json_agg(score ORDER BY created_at DESC) as scores
+      FROM pollen_ratings
+      WHERE city_en = ${city} AND date = ${today}
+    `;
+    const row = summary[0];
+    if (!row || row.count === 0) return { count: 0, avg: 0, distribution: [0,0,0,0,0] };
+
+    // Build distribution array [count_1, count_2, count_3, count_4, count_5]
+    const dist = [0,0,0,0,0];
+    for (const s of (row.scores as number[])) {
+      dist[s - 1]++;
+    }
+    return { count: row.count, avg: row.avg, distribution: dist };
+  })
   .get("/", () => Bun.file(path.join(staticDir, 'index.html')))
   .get("/*", ({ request }) => {
     const url = new URL(request.url);

@@ -35,6 +35,23 @@ export async function initDB() {
     )
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS pollen_ratings (
+      id SERIAL PRIMARY KEY,
+      city_en TEXT NOT NULL,
+      date TEXT NOT NULL,
+      score INTEGER NOT NULL CHECK (score >= 1 AND score <= 5),
+      fingerprint TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(city_en, date, fingerprint)
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_pollen_ratings_city_date
+    ON pollen_ratings (city_en, date)
+  `;
+
   console.log('Database tables initialized.');
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import './App.css';
 import CityDetailModal from './components/CityDetailModal';
 import PollenMap from './components/Map';
+import PollenRating from './components/PollenRating';
 
 interface CityMeta {
   en: string;
@@ -224,52 +225,45 @@ function App() {
         </div>
       </nav>
 
-      {/* My City Banner */}
+      {/* My City Banner (compact) */}
       {!myCityLoading && effectiveMyCity && (
         <div
-          className={`city-banner ${effectiveMyCity.data ? 'clickable' : ''}`}
+          className={`city-banner compact ${effectiveMyCity.data ? 'clickable' : ''}`}
           style={effectiveMyCity.data ? { borderLeftColor: effectiveMyCity.data.color } : undefined}
           onClick={() => effectiveMyCity.data && handleCityClick(effectiveMyCity.city.en, effectiveMyCity.city.cn)}
         >
-          <div className="banner-left">
-            <svg className="banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-            <div className="banner-info">
-              <div className="banner-eyebrow">当前城市</div>
-              <div className="banner-city-row">
-                <div className="banner-city-name">
-                  {effectiveMyCity.city.cn}
-                </div>
-                <div className="banner-tags">
-                  {!effectiveMyCity.inList && <span className="banner-tag">实时抓取</span>}
-                  {effectiveMyCity.distance > 30 && (
-                    <span className="banner-distance">距您约 {effectiveMyCity.distance}km</span>
-                  )}
-                </div>
-              </div>
-              <div className="banner-msg">
-                {effectiveMyCity.data
-                  ? effectiveMyCity.data.msg || '暂无花粉提示'
-                  : isMyCityScraping
-                    ? '正在实时抓取当前城市花粉数据...'
-                    : effectiveMyCity.inList
-                      ? '当前城市数据准备中...'
-                      : '正在尝试补抓当前城市花粉数据...'}
-              </div>
-            </div>
-          </div>
+          <svg className="banner-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span className="banner-city-name-sm">{effectiveMyCity.city.cn}</span>
+          {!effectiveMyCity.inList && <span className="banner-tag-sm">实时抓取</span>}
+          {effectiveMyCity.distance > 30 && (
+            <span className="banner-tag-sm muted">距您 {effectiveMyCity.distance}km</span>
+          )}
+          <span className="banner-msg-sm">
+            {effectiveMyCity.data
+              ? effectiveMyCity.data.msg || '暂无花粉提示'
+              : isMyCityScraping
+                ? '正在抓取...'
+                : '数据准备中...'}
+          </span>
+          <span className="banner-spacer" />
           {effectiveMyCity.data ? (
-            <div className="banner-level" style={{ backgroundColor: effectiveMyCity.data.color || '#94a3b8' }}>
+            <span className="banner-level-sm" style={{ backgroundColor: effectiveMyCity.data.color || '#94a3b8' }}>
               {effectiveMyCity.data.level}
-            </div>
+            </span>
           ) : (
-            <div className="banner-level" style={{ backgroundColor: isMyCityScraping ? '#f59e0b' : '#94a3b8' }}>
+            <span className="banner-level-sm" style={{ backgroundColor: isMyCityScraping ? '#f59e0b' : '#94a3b8' }}>
               {isMyCityScraping ? '抓取中' : '加载中'}
-            </div>
+            </span>
           )}
         </div>
+      )}
+
+      {/* Pollen Rating */}
+      {!myCityLoading && effectiveMyCity && effectiveMyCity.data && (
+        <PollenRating cityEn={effectiveMyCity.city.en} cityName={effectiveMyCity.city.cn} />
       )}
 
       {error && <div className="error-banner">{error}</div>}
