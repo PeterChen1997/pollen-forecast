@@ -269,7 +269,7 @@ function App() {
 
       {/* Pollen Rating */}
       {!myCityLoading && effectiveMyCity && effectiveMyCity.data && (
-        <PollenRating cityEn={effectiveMyCity.city.en} cityName={effectiveMyCity.city.cn} />
+        <PollenRating cityEn={effectiveMyCity.city.en} />
       )}
 
       {error && <div className="error-banner">{error}</div>}

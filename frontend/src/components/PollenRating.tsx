@@ -8,7 +8,6 @@ interface RatingSummary {
 
 interface PollenRatingProps {
   cityEn: string;
-  cityName: string;
 }
 
 const scoreLabels = ['很舒适', '较舒适', '一般', '不适', '很难受'];
@@ -22,7 +21,7 @@ function getFingerprint(): string {
   return fp;
 }
 
-export default function PollenRating({ cityEn, cityName }: PollenRatingProps) {
+export default function PollenRating({ cityEn }: PollenRatingProps) {
   const [summary, setSummary] = useState<RatingSummary | null>(null);
   const [myScore, setMyScore] = useState<number | null>(null);
   const [hovering, setHovering] = useState<number | null>(null);
