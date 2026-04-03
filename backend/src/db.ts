@@ -23,9 +23,15 @@ export async function initDB() {
       level_name TEXT NOT NULL,
       color TEXT,
       msg TEXT,
+      source TEXT NOT NULL DEFAULT 'weatherdt',
       created_at TIMESTAMPTZ DEFAULT NOW(),
       UNIQUE(city_en, date)
     )
+  `;
+
+  // Add source column if missing (existing deployments)
+  await sql`
+    ALTER TABLE pollen_data ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'weatherdt'
   `;
 
   await sql`

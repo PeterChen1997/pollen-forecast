@@ -20,7 +20,13 @@ interface CityData {
   level: string;
   color: string;
   msg: string;
+  source?: string;
 }
+
+const sourceLabels: Record<string, string> = {
+  qweather: '过敏指数',
+  nearby: '邻近推算',
+};
 
 interface ScrapeStatus {
   isScraping: boolean;
@@ -268,28 +274,6 @@ function App() {
 
       {error && <div className="error-banner">{error}</div>}
 
-      {/* Stats Bar */}
-      {!loading && !error && (
-        <div className="stats-bar">
-          <div className="stat-card">
-            <span className="stat-label">监测城市</span>
-            <span className="stat-value">{cities.length}</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">高浓度预警</span>
-            <span className="stat-value danger">{highCount}</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">中等浓度</span>
-            <span className="stat-value warning">{mediumCount}</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">低浓度安全</span>
-            <span className="stat-value safe">{safeCount}</span>
-          </div>
-        </div>
-      )}
-
       {/* Main content: Map + Sidebar */}
       <div className="main-content">
         <div className="map-section">
@@ -327,7 +311,12 @@ function App() {
                   {formatDistance(getDistanceToCity(item.city_en))}
                 </span>
                 <div className="city-info">
-                  <div className="city-name">{item.city}</div>
+                  <div className="city-name">
+                    {item.city}
+                    {item.source && sourceLabels[item.source] && (
+                      <span className="source-tag">{sourceLabels[item.source]}</span>
+                    )}
+                  </div>
                   <div className="city-msg">{item.msg}</div>
                 </div>
                 <span className="city-level-badge" style={{ backgroundColor: item.color || '#94a3b8' }}>
@@ -370,6 +359,19 @@ function App() {
           currentData={dataMap.get(selectedCity.id)}
           onClose={() => setSelectedCity(null)}
         />
+      )}
+
+      {/* Stats Strip */}
+      {!loading && !error && (
+        <div className="stats-strip">
+          <span className="stats-strip-item">监测城市 <strong>{cities.length}</strong></span>
+          <span className="stats-strip-sep" />
+          <span className="stats-strip-item">高浓度预警 <strong className="danger">{highCount}</strong></span>
+          <span className="stats-strip-sep" />
+          <span className="stats-strip-item">中等浓度 <strong className="warning">{mediumCount}</strong></span>
+          <span className="stats-strip-sep" />
+          <span className="stats-strip-item">低浓度安全 <strong className="safe">{safeCount}</strong></span>
+        </div>
       )}
 
       <footer className="footer">

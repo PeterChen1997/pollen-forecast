@@ -39,7 +39,7 @@ const app = new Elysia()
     // If user is close to a known city, return it directly
     if (distance < 150) {
       const rows = await sql`
-        SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg
+        SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg, source
         FROM pollen_data WHERE city_en = ${nearest.en} AND date = ${today} LIMIT 1
       `;
       return {
@@ -66,7 +66,7 @@ const app = new Elysia()
           // Scrape this city on demand
           await scrapeSingleCity(matched.en, matched.cn);
           const rows = await sql`
-            SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg
+            SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg, source
             FROM pollen_data WHERE city_en = ${matched.en} AND date = ${today} LIMIT 1
           `;
           return {
@@ -83,7 +83,7 @@ const app = new Elysia()
 
     // Fallback: return nearest major city
     const rows = await sql`
-      SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg
+      SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg, source
       FROM pollen_data WHERE city_en = ${nearest.en} AND date = ${today} LIMIT 1
     `;
     return {
@@ -103,7 +103,7 @@ const app = new Elysia()
 
     const today = new Date().toISOString().split('T')[0];
     const data = await sql`
-      SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg
+      SELECT city_cn as city, city_en, date, level_code as "levelCode", level_name as level, color, msg, source
       FROM pollen_data
       WHERE date = ${today}
       ORDER BY level_code DESC
@@ -115,7 +115,7 @@ const app = new Elysia()
     runScrape().catch(console.error);
 
     const data = await sql`
-      SELECT date, level_code as "levelCode", level_name as level, color, msg
+      SELECT date, level_code as "levelCode", level_name as level, color, msg, source
       FROM pollen_data
       WHERE city_en = ${city}
       ORDER BY date ASC

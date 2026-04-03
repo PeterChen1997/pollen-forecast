@@ -27,9 +27,7 @@ export default function PollenRating({ cityEn, cityName }: PollenRatingProps) {
   const [myScore, setMyScore] = useState<number | null>(null);
   const [hovering, setHovering] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [justSubmitted, setJustSubmitted] = useState(false);
 
-  // Check local storage for today's rating
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     const key = `pollen_rating_${cityEn}_${today}`;
@@ -37,7 +35,6 @@ export default function PollenRating({ cityEn, cityName }: PollenRatingProps) {
     if (saved) setMyScore(parseInt(saved));
   }, [cityEn]);
 
-  // Fetch community ratings
   useEffect(() => {
     fetch(`/api/ratings/${cityEn}`)
       .then(r => r.json())
@@ -63,82 +60,44 @@ export default function PollenRating({ cityEn, cityName }: PollenRatingProps) {
       });
       const data = await res.json();
       if (data.count !== undefined) {
-        // Re-fetch full summary with distribution
         const summaryRes = await fetch(`/api/ratings/${cityEn}`);
-        const summaryData = await summaryRes.json();
-        setSummary(summaryData);
+        setSummary(await summaryRes.json());
       }
       localStorage.setItem(`pollen_rating_${cityEn}_${today}`, String(score));
-      setJustSubmitted(true);
-      setTimeout(() => setJustSubmitted(false), 2000);
     } catch {
-      // revert on error
       setMyScore(null);
     } finally {
       setSubmitting(false);
     }
   }, [cityEn, submitting]);
 
-  const displayScore = hovering ?? myScore;
   const totalVotes = summary?.count ?? 0;
 
   return (
-    <div className="rating-section">
-      <div className="rating-header">
-        <span className="rating-title">今日{cityName}花粉体感</span>
-        {totalVotes > 0 && (
-          <span className="rating-vote-count">{totalVotes} 人评价</span>
-        )}
-      </div>
-
-      <div className="rating-scores">
+    <div className="rating-strip">
+      <span className="rating-strip-label">今日体感</span>
+      <div className="rating-strip-btns">
         {[1, 2, 3, 4, 5].map(score => (
           <button
             key={score}
-            className={`rating-btn ${myScore === score ? 'active' : ''} ${hovering === score ? 'hover' : ''}`}
+            className={`rating-chip ${myScore === score ? 'active' : ''}`}
             onClick={() => handleRate(score)}
             onMouseEnter={() => setHovering(score)}
             onMouseLeave={() => setHovering(null)}
             disabled={submitting}
             title={scoreLabels[score - 1]}
           >
-            <span className="rating-emoji">{scoreEmojis[score - 1]}</span>
-            <span className="rating-label">{scoreLabels[score - 1]}</span>
+            {scoreEmojis[score - 1]}
           </button>
         ))}
       </div>
-
-      {justSubmitted && (
-        <div className="rating-feedback">感谢反馈!</div>
+      {totalVotes > 0 && (
+        <span className="rating-strip-summary">
+          {totalVotes}人评价 均分<strong>{summary!.avg}</strong>
+        </span>
       )}
-
-      {/* Community distribution bar */}
-      {summary && totalVotes > 0 && (
-        <div className="rating-community">
-          <div className="rating-avg">
-            社区平均: <strong>{summary.avg}</strong>/5
-            {displayScore && (
-              <span className="rating-my-label"> (你选了「{scoreLabels[(displayScore) - 1]}」)</span>
-            )}
-          </div>
-          <div className="rating-dist">
-            {summary.distribution.map((count, i) => {
-              const pct = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
-              return (
-                <div key={i} className="rating-dist-row">
-                  <span className="rating-dist-label">{scoreEmojis[i]}</span>
-                  <div className="rating-dist-bar">
-                    <div
-                      className="rating-dist-fill"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="rating-dist-count">{count}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      {hovering && !myScore && (
+        <span className="rating-strip-hint">{scoreLabels[hovering - 1]}</span>
       )}
     </div>
   );
