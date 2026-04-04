@@ -189,7 +189,7 @@
 
 /* ===== Pollen Rating (inline strip) ===== */
 .rating-strip {
-  margin: 8px 24px 0;
+  margin: 8px 24px 12px;
   padding: 8px 14px;
   border: 1px solid rgba(126, 20, 255, 0.1);
   border-radius: var(--radius-sm);
@@ -262,7 +262,7 @@
 
 @media (max-width: 640px) {
   .rating-strip {
-    margin: 6px 16px 0;
+    margin: 6px 16px 10px;
     padding: 6px 10px;
     gap: 8px;
   }
