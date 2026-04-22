@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
 
+import { getSourceMeta } from '../lib/pollenSources';
+
 interface HistoryItem {
   date: string;
   levelCode: number;
   level: string;
   color: string;
   msg: string;
+  source?: string;
 }
 
 interface CityData {
@@ -17,6 +20,7 @@ interface CityData {
   level: string;
   color: string;
   msg: string;
+  source?: string;
 }
 
 interface CityDetailModalProps {
@@ -55,9 +59,9 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
 
   useEffect(() => {
     fetch(`/api/pollen/${cityId}`)
-      .then(r => r.json())
-      .then((data: HistoryItem[]) => {
-        setHistory(data);
+      .then((response) => response.json())
+      .then((items: HistoryItem[]) => {
+        setHistory(items.filter((item) => item.levelCode >= 0));
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -78,15 +82,17 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
 
           const item = history[firstParam.dataIndex];
           if (!item) return '';
+          const sourceMeta = getSourceMeta(item.source);
 
           return `<strong>${item.date}</strong><br/>
                   等级: <span style="color:${item.color}">${item.level}</span> (${item.levelCode})<br/>
+                  ${sourceMeta ? `来源: ${sourceMeta.label}<br/>` : ''}
                   ${item.msg}`;
         },
       },
       xAxis: {
         type: 'category',
-        data: history.map(d => d.date.slice(5)), // MM-DD
+        data: history.map((item) => item.date.slice(5)),
         axisLabel: { fontSize: 11, color: '#94a3b8' },
         axisLine: { lineStyle: { color: '#e2e8f0' } },
       },
@@ -98,9 +104,9 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
         splitLine: { lineStyle: { color: '#f1f5f9' } },
       },
       series: [{
-        data: history.map(d => ({
-          value: d.levelCode,
-          itemStyle: { color: d.color || '#94a3b8' },
+        data: history.map((item) => ({
+          value: item.levelCode,
+          itemStyle: { color: item.color || '#94a3b8' },
         })),
         type: 'line',
         smooth: true,
@@ -130,10 +136,11 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
   const levelCode = currentData?.levelCode ?? 0;
   const tips = protectionTips[Math.min(levelCode, 5)] || protectionTips[0];
   const desc = levelDescriptions[Math.min(levelCode, 5)] || '';
+  const sourceMeta = getSourceMeta(currentData?.source);
 
   return (
     <div className="detail-overlay" onClick={onClose}>
-      <div className="detail-panel" onClick={e => e.stopPropagation()}>
+      <div className="detail-panel" onClick={(event) => event.stopPropagation()}>
         <div className="detail-header">
           <div className="detail-header-left">
             <span className="detail-city-name">{cityName}</span>
@@ -149,7 +156,6 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
         <div className="detail-body">
           {currentData ? (
             <>
-              {/* Info Grid */}
               <div className="detail-info-grid">
                 <div className="detail-info-card">
                   <div className="detail-info-label">花粉等级</div>
@@ -161,21 +167,36 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
                   <div className="detail-info-label">监测日期</div>
                   <div className="detail-info-value">{currentData.date}</div>
                 </div>
+                <div className="detail-info-card">
+                  <div className="detail-info-label">数据来源</div>
+                  <div className="detail-info-value">{sourceMeta?.label ?? '未标注'}</div>
+                </div>
+                <div className="detail-info-card">
+                  <div className="detail-info-label">来源类型</div>
+                  <div className="detail-info-value">{sourceMeta?.isEstimated ? '推算数据' : '直接来源'}</div>
+                </div>
                 <div className="detail-info-card" style={{ gridColumn: '1 / -1' }}>
                   <div className="detail-info-label">浓度描述</div>
-                  <div className="detail-info-value" style={{ fontSize: 14, fontWeight: 400 }}>
+                  <div className="detail-info-value detail-info-copy">
                     {desc}
                   </div>
                 </div>
               </div>
 
-              {/* Protection Tips */}
+              {sourceMeta && (
+                <div className="detail-source-note">
+                  <strong>{sourceMeta.shortLabel}</strong>
+                  {' '}
+                  {sourceMeta.description}
+                </div>
+              )}
+
               <div className="detail-msg">
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>防护建议</div>
                 <div>{currentData.msg}</div>
                 <ul style={{ marginTop: 8, paddingLeft: 18 }}>
-                  {tips.map((tip, i) => (
-                    <li key={i} style={{ marginBottom: 2 }}>{tip}</li>
+                  {tips.map((tip, index) => (
+                    <li key={index} style={{ marginBottom: 2 }}>{tip}</li>
                   ))}
                 </ul>
               </div>
@@ -186,7 +207,6 @@ export default function CityDetailModal({ cityId, cityName, currentData, onClose
             </div>
           )}
 
-          {/* Chart */}
           <div className="detail-chart-title">近期趋势</div>
           {loading ? (
             <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>

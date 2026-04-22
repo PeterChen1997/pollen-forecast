@@ -1,5 +1,9 @@
-import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip } from 'react-leaflet';
+import { useEffect } from 'react';
+import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+
+import { type CityReferenceLike } from '../lib/cityReference';
+import { getSourceMeta } from '../lib/pollenSources';
 
 interface CityMeta {
   en: string;
@@ -16,12 +20,14 @@ interface CityData {
   level: string;
   color: string;
   msg: string;
+  source?: string;
 }
 
 interface MapProps {
   cities: CityMeta[];
   data: CityData[];
   scrapingCities: string[];
+  focusCity?: CityReferenceLike | null;
   onCityClick: (cityId: string, cityName: string) => void;
 }
 
@@ -71,9 +77,25 @@ function wgs84ToGcj02(lat: number, lng: number): [number, number] {
   return [lat + dLat, lng + dLng];
 }
 
-export default function PollenMap({ cities, data, scrapingCities, onCityClick }: MapProps) {
-  const dataMap = new Map(data.map(d => [d.city_en, d]));
+function MapViewportController({ focusCity }: { focusCity?: CityReferenceLike | null }) {
+  const map = useMap();
+  const focusCityEn = focusCity?.en;
+  const focusCityLat = focusCity?.lat;
+  const focusCityLng = focusCity?.lng;
+
+  useEffect(() => {
+    if (focusCityLat == null || focusCityLng == null) return;
+    const [lat, lng] = wgs84ToGcj02(focusCityLat, focusCityLng);
+    map.flyTo([lat, lng], 7, { duration: 0.8 });
+  }, [focusCityEn, focusCityLat, focusCityLng, map]);
+
+  return null;
+}
+
+export default function PollenMap({ cities, data, scrapingCities, focusCity, onCityClick }: MapProps) {
+  const dataMap = new Map(data.map((item) => [item.city_en, item]));
   const [centerLat, centerLng] = wgs84ToGcj02(34.5, 108);
+  const transformedFocusCity = focusCity ? wgs84ToGcj02(focusCity.lat, focusCity.lng) : null;
 
   return (
     <MapContainer
@@ -83,13 +105,36 @@ export default function PollenMap({ cities, data, scrapingCities, onCityClick }:
       zoomControl={true}
       attributionControl={false}
     >
+      <MapViewportController focusCity={focusCity} />
+
       <TileLayer
         url="https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
         subdomains={['1', '2', '3', '4']}
       />
+
+      {transformedFocusCity && (
+        <CircleMarker
+          center={transformedFocusCity}
+          radius={14}
+          fillOpacity={0.08}
+          fillColor="#7e14ff"
+          color="#7e14ff"
+          weight={3}
+        >
+          <Tooltip direction="top" offset={[0, -8]} permanent={false}>
+            <div style={{ textAlign: 'center', padding: '2px 4px' }}>
+              <strong>{focusCity?.cn}</strong>
+              <br />
+              <span style={{ color: '#7e14ff', fontSize: 12 }}>当前参考城市</span>
+            </div>
+          </Tooltip>
+        </CircleMarker>
+      )}
+
       {cities.map((city) => {
         const cityData = dataMap.get(city.en);
         const isScraping = scrapingCities.includes(city.en);
+        const sourceMeta = getSourceMeta(cityData?.source);
         const color = cityData ? (cityData.color || getLevelColor(cityData.levelCode)) : (isScraping ? '#eab308' : '#d1d5db');
         const radius = cityData ? (city.tier === 1 ? 10 : 7) : 5;
         const opacity = cityData ? 0.9 : 0.4;
@@ -117,6 +162,12 @@ export default function PollenMap({ cities, data, scrapingCities, onCityClick }:
                     <span style={{ color: cityData.color }}>
                       {cityData.level}
                     </span>
+                    {sourceMeta && (
+                      <>
+                        <br />
+                        <span style={{ color: '#7e14ff', fontSize: 12 }}>{sourceMeta.shortLabel}</span>
+                      </>
+                    )}
                   </>
                 ) : isScraping ? (
                   <>
@@ -127,11 +178,11 @@ export default function PollenMap({ cities, data, scrapingCities, onCityClick }:
               </div>
             </Tooltip>
             <Popup>
-              <div style={{ minWidth: 160 }}>
+              <div style={{ minWidth: 180 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{city.cn}</div>
                 {cityData ? (
                   <>
-                    <div style={{ marginBottom: 4 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                       <span style={{
                         display: 'inline-block',
                         padding: '2px 8px',
@@ -143,10 +194,28 @@ export default function PollenMap({ cities, data, scrapingCities, onCityClick }:
                       }}>
                         {cityData.level}
                       </span>
+                      {sourceMeta && (
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          background: 'rgba(126,20,255,0.08)',
+                          color: '#7e14ff',
+                          fontSize: 11,
+                          fontWeight: 600,
+                        }}>
+                          {sourceMeta.shortLabel}
+                        </span>
+                      )}
                     </div>
-                    <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
+                    <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>
                       {cityData.msg}
                     </div>
+                    {sourceMeta && (
+                      <div style={{ fontSize: 12, color: '#7c3aed', marginBottom: 8 }}>
+                        数据来源：{sourceMeta.label}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div style={{ fontSize: 13, color: '#999', marginBottom: 8 }}>
