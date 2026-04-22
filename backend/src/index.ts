@@ -2,7 +2,8 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 
 import sql, { initDB } from "./db";
-import { runScrape, getScrapingStatus, majorCities, findNearestMajorCity, findCityByChineseName, scrapeSingleCity } from "./scraper";
+import { runScrape, getScrapingStatus, scrapeSingleCity } from "./scraper";
+import { findCityByChineseName, findNearestMajorCity, getCityOptions, majorCities } from "./cityDirectory";
 import path from "path";
 
 const port = process.env.PORT ?? 8080;
@@ -24,6 +25,10 @@ const app = new Elysia()
       lat: c.lat,
       lng: c.lng,
     }));
+  })
+  .get("/api/city-options", ({ query }) => {
+    const keyword = typeof query.q === "string" ? query.q : "";
+    return getCityOptions(keyword);
   })
   // Locate user's city by coordinates
   .get("/api/my-city", async ({ query }) => {
@@ -62,7 +67,6 @@ const app = new Elysia()
       if (cityName) {
         const matched = findCityByChineseName(cityName);
         if (matched) {
-          const isListedCity = majorCities.some(city => city.en === matched.en);
           // Scrape this city on demand
           await scrapeSingleCity(matched.en, matched.cn);
           const rows = await sql`
@@ -72,7 +76,7 @@ const app = new Elysia()
           return {
             city: { en: matched.en, cn: matched.cn, lat: matched.lat, lng: matched.lng },
             distance: 0,
-            inList: isListedCity,
+            inList: matched.inList,
             data: rows[0] || null,
           };
         }
